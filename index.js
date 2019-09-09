@@ -21,6 +21,9 @@ import stringUtil from "./js/libs/stringUtil";
 import tooltip from "./js/libs/tooltip";
 import valid from "./js/libs/valid";
 import validate from "./js/libs/validate";
+import sliderScroll from "./js/libs/sliderScroll";
+import sliderTab from "./js/libs/sliderTab";
+import sliderWin from "./js/libs/sliderWin";
 
 import adCellModule from "./js/uis/adCellModule";
 import adChModule from "./js/uis/adChModule";
@@ -69,7 +72,10 @@ export {
     stringUtil,
     tooltip,
     valid,
-    validate,
+    validate,    
+    sliderScroll,
+    sliderTab,
+    sliderWin,
     adCellModule,
     adChModule,
     adModule,
