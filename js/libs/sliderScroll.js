@@ -187,35 +187,31 @@
 			    isStart = func(event, __params) == false ? false : true;
 			    return !!isStart;
 			});
-		    if (!isStart) return;
-		    __params.startTime = now();
-		    __params.startX = getPageXY(event, "X");
-		    __params.startY = getPageXY(event, "Y");
-		    var _remove = function () {
-		    	removeEvent(doc, onMove, moveFunc);
-		        removeEvent(doc, onEnd, endFunc);
-		    };
-		    var moveFunc = function(event) {
-		    	var isMove = false;
-		        __params.endX = getPageXY(event, "X");
-		        __params.endY = getPageXY(event, "Y");
+		    __params.isStart = isStart;
+		    if (__params.isStart) {
+		    	__params.startTime = now();
+			    __params.startX = getPageXY(event, "X");
+			    __params.startY = getPageXY(event, "Y");
+			}
+		});
+		addEvent(doc, onMove, function(event){
+			if (__params.isStart) {
+				__params.endX = getPageXY(event, "X");
+				__params.endY = getPageXY(event, "Y");
 				each(_moveHooks, function(i, func) {
-					isMove = func(event, __params) == false ? false : true;
-				    return isMove;
+					func(event, __params);
 				});
-				!isMove && _remove();
-		    };
-		    var endFunc = function(event) {
-		    	_remove();
-			    __params.endTime = now();
-		        __params.endX = getPageXY(event, "X");
-		        __params.endY = getPageXY(event, "Y");
-		        each(_stopHooks, function(i, func) {
-		        	func(event, __params);
-			    });
-		    };
-		    addEvent(doc, onMove, moveFunc);
-		    addEvent(doc, onEnd, endFunc);
+			}
+		});
+		addEvent(doc, onEnd, function(event){
+			if (__params.isStart) {
+				__params.endTime = now();
+				__params.endX = getPageXY(event, "X");
+				__params.endY = getPageXY(event, "Y");
+				each(_stopHooks, function(i, func) {
+					func(event, __params);
+				});
+			}
 		});
 		
 		return {
@@ -258,6 +254,9 @@
 	};
 	
 	var sliderScroll = function (params) {
+		if (!(this instanceof sliderScroll)) {
+			return new sliderScroll(params);
+		}
 		if (params.pullDown) {
 		    params.pullDown = extend(loadDef, params.pullDown);
 		}
@@ -407,12 +406,11 @@
 		};
 
 		// 同步CSS位置
-		var updatePos = function() {
-		    _stop(content);
+		var updatePos = function() {		    
 		    currTop = parseFloat(getStyle(content, attName).replace(/[^\d|\.|-]/g, '') || 0);
 		};
 		// 移动中
-		var movePos = function(height) {
+		var movePos = function(height, event, __params) {
 		    var temTop = currTop + height;
 		    if (height > 0 && temTop > 0) {
 		        if (params.isTopEffect) {// 只滑动超出部分的20%
@@ -422,7 +420,7 @@
 		        }	
 		        // 回调事件
 		        each(_onOverflow, function(i, func) {
-		    		func(Math.abs(height));
+		    		func(height);
 		    	});
 		    } else if (temTop < -getScrollHeight()) {
 		    	var maxMove = getScrollHeight();
@@ -433,8 +431,8 @@
 		        }
 		        // 回调事件
 		        each(_onOverflow, function(i, func) {
-		    		func(Math.abs(height));
-		    	});
+		            func(height);
+		        });
 		    }
 		    var total = currTop + height;
 		    extend(content.style, {// 更新位置
@@ -448,63 +446,54 @@
 		};
 
 		// 移动结束
-		var endPos = function(height, __params) {
-		    var v0 = 0, s0 = 0, top;
-		    if (params.isSpring) {// 得到速度*滑动时间*阻尔糸数 = 路程
-		        v0 = Math.abs(height) / (__params.endTime - __params.startTime);
-		        s0 = v0 * params.time * params.drag;// 路程
-		    }
-		    if (height > 0) {// 左向右移动正
-		        height += s0;
-		    } else {// 右向左移动负
-		        height -= s0;
-		    }
-		    top = currTop + height;
-
-		    if (height > 0) {// 左边已没有了
-		        top > 0 && (top = 0);
-		    } else {// 右边已没有了
-		    	var maxMove = getScrollHeight();
-		        if (Math.abs(top) > maxMove) {
-		            top = -maxMove;
-		        }
-		    }
+		var endPos = function(height, event, __params) {
+			var v0 = 0, s0 = 0, top;
+			if (params.isSpring) { // 得到速度*滑动时间*阻尔糸数 = 路程
+			    v0 = Math.abs(height) / (__params.endTime - __params.startTime);
+			    s0 = v0 * params.time * params.drag; // 路程
+			}
+			if (height > 0) { // 左向右移动正
+			    height += s0;
+			} else { // 右向左移动负
+			    height -= s0;
+			}
+			top = currTop + height;
+			if (height > 0) { // 左边已没有了
+			    top > 0 && (top = 0);
+			} else { // 右边已没有了
+			    var maxMove = getScrollHeight();
+			    if (Math.abs(top) > maxMove) {
+			        top = -maxMove;
+			    }
+			}
 		    new _animate(content, attName, top, params.time, function() {
-		        // 回调事件
-		    	setTimeout(function () {
-		    		updatePos();
-		    		each(_onStop, function(i, func) {
-		    			func(currTop);
-		    		});
-		    	},0);
-		    	// 回调事件    
-		    	if (currTop > -1 || Math.abs(currTop - 1) >= getScrollHeight()) {
-		    		each(_onTopOrBottom, function(i, func) {
-						func();
-					});
-		    	}
-		    	
+		    	// 回调事件
+		        updatePos();
+		        each(_onStop, function(i, func) {
+		            func(currTop);
+		        });
+		        // 回调事件    
+		        if (currTop > -1 || Math.abs(currTop - 1) >= getScrollHeight()) {
+		            each(_onTopOrBottom, function(i, func) {
+		                func();
+		            });
+		        }
 		    },false, function (top) {
-		    	moveScrollbar(top);		
-		        // 回调事件    	
+		    	moveScrollbar(top); // 回调事件    		
 		    	each(_onScroll, function(i, func) {
-		    		func(top);
+		    	    func(top);
 		    	});
-		        // 回调事件
-		    	each(_onMove, function(i, func) {
-					func(top);
-				});
 		    });
 		};
 		// 初始滚动条相关
+		if (_typeof(params.scrollTop) == "number") {
+		    setScrollTop(params.scrollTop);
+		}
+		updatePos();
 		if (_content && params.hasScrollbar) {
-			_content.appendChild(scrollbar);
-		    updatePos();
+		    _content.appendChild(scrollbar);
 		    moveScrollbar(currTop);
 		}
-		if (_typeof(params.scrollTop)=="number") {
-	        setScrollTop(params.scrollTop);
-	    }
 		var drag = new bidnDrag(), isMove = false, isLock = false;// true锁定
 		// 添加开始滚动执行的函数
 		drag.addStartHooks(function(event, __params) {
@@ -512,53 +501,56 @@
 		    cur = (event.target || event.srcElement);
 		    while (cur && cur != body) {
 		        if (cur.nodeType == 1 && cur == content) {
-		            isStart = true;		  
-		            updatePos();
-			        // 回调事件
-					each(_onStart, function(i, func) {
-						func(currTop, event, __params);
-					});
-				    isLock = false;
+		            isStart = true;
+		            isLock = false;
 		            break;
 		        }
 		        cur = cur["parentNode"];
 		    }
-
-		    return isStart? getConHeight() < getWinHeight() ? false : true : false;
+		    return isStart ? getConHeight() < getWinHeight() ? false : true : false;
 		});
 		// 添加滑动滚动执行的函数
 		drag.addMoveHooks(function(event, __params) {
 			if (isPause) {
-				return !isPause;
-			}
-			var moveX = __params.endX - __params.startX;
-			var moveY = __params.endY - __params.startY;
-			if (!isLock && !isMove && Math.abs(moveY) > Math.abs(moveX)) {
-				isMove = true;
-				if (moveY > 0) {
-			        if (!params.isTopEffect && currTop > -1) {
-			            return false;// 已滑到顶释放事件
-			        }
-			    } else {
-			        if (!params.isBotEffect && Math.abs(currTop + moveY) > getScrollHeight()) {
-			            return false; // 已滑到底释放事件
-			        }
-			    }
-			}
-			!isMove && (isLock = true);
-			if (!isLock && isMove) {
-			    movePos(moveY, __params);
-		        // 回调事件
-			    each(_onMove, function(i, func) {
-					func(moveY, event, __params);
+		        return !isPause;
+		    }
+		    var moveX = __params.endX - __params.startX;
+		    var moveY = __params.endY - __params.startY;
+		    var absMoveY = Math.abs(moveY);
+		    var absMoveX = Math.abs(moveX);
+		    if (!isLock && !isMove && absMoveY > absMoveX && absMoveY != absMoveX) {
+		        if (moveY > 0) {// 已滑到顶释放事件
+		            if (!params.isTopEffect && currTop > -1) {
+		                return false;
+		                
+		            }
+		        } else {// 已滑到底释放事件
+		            if (!params.isBotEffect && Math.abs(currTop + moveY) > getScrollHeight()) {
+		                return false;
+		            }
+		        }
+		        _stop(content);
+		        updatePos();
+		        // 回调开始事件
+				each(_onStart, function(i, func) {
+					func(currTop, event, __params);
 				});
-			    event.preventDefault();
-			}
+		        isMove = true;
+		    }
+		    !isMove && (isLock = true);
+		    if (!isLock && isMove) {
+		        event.preventDefault();
+		        movePos(moveY, event, __params);
+		        // 回调滑动事件
+		        each(_onMove, function(i, func) {
+		            func(moveY, event, __params);
+		        });
+		    }
 		});
 		// 添加滑动结束滚动执行的函数
 		drag.addStopHooks(function(event, __params) {
 			if (isMove) {
-				endPos(__params.endY - __params.startY, __params);
+				endPos(__params.endY - __params.startY, event, __params);
 				isMove = false;
 			}
 		});

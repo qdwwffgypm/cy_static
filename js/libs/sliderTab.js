@@ -187,35 +187,31 @@
 			    isStart = func(event, __params) == false ? false : true;
 			    return !!isStart;
 			});
-		    if (!isStart) return;
-		    __params.startTime = now();
-		    __params.startX = getPageXY(event, "X");
-		    __params.startY = getPageXY(event, "Y");
-		    var _remove = function () {
-		    	removeEvent(doc, onMove, moveFunc);
-		        removeEvent(doc, onEnd, endFunc);
-		    };
-		    var moveFunc = function(event) {
-		    	var isMove = false;
-		        __params.endX = getPageXY(event, "X");
-		        __params.endY = getPageXY(event, "Y");
+		    __params.isStart = isStart;
+		    if (__params.isStart) {
+		    	__params.startTime = now();
+			    __params.startX = getPageXY(event, "X");
+			    __params.startY = getPageXY(event, "Y");
+			}
+		});
+		addEvent(doc, onMove, function(event){
+			if (__params.isStart) {
+				__params.endX = getPageXY(event, "X");
+				__params.endY = getPageXY(event, "Y");
 				each(_moveHooks, function(i, func) {
-					isMove = func(event, __params) == false ? false : true;
-				    return isMove;
+					func(event, __params);
 				});
-				!isMove && _remove();  
-		    };
-		    var endFunc = function(event) {
-		    	_remove();
-			    __params.endTime = now();
-		        __params.endX = getPageXY(event, "X");
-		        __params.endY = getPageXY(event, "Y");
-		        each(_stopHooks, function(i, func) {
-		        	func(event, __params);
-			    });
-		    };
-		    addEvent(doc, onMove, moveFunc);
-		    addEvent(doc, onEnd, endFunc);
+			}
+		});
+		addEvent(doc, onEnd, function(event){
+			if (__params.isStart) {
+				__params.endTime = now();
+				__params.endX = getPageXY(event, "X");
+				__params.endY = getPageXY(event, "Y");
+				each(_stopHooks, function(i, func) {
+					func(event, __params);
+				});
+			}
 		});
 		
 		return {
@@ -231,6 +227,9 @@
 		};
 	};
 	var sliderTab = function (params) {
+		if (!(this instanceof sliderTab)) {
+			return new sliderTab(params);
+		}
 		params = Object.assign({
 			elem : "",// 窗口元素--要设置高度
 			content : "",// 窗口子元素--被包在动态生成的绝对元素里
@@ -450,7 +449,10 @@
 		    }
 		    var moveX = __params.endX - __params.startX;
 		    var moveY = __params.endY - __params.startY;
-		    if (!isLock && !isMove && Math.abs(moveX) > Math.abs(moveY)) {	
+		    var absMoveY = Math.abs(moveY);
+		    var absMoveX = Math.abs(moveX);
+		    if (!isLock && !isMove && absMoveX > absMoveY && absMoveY != absMoveX) {	
+		        event.preventDefault();
 	            _stop(content);
 	            updatePos();
 				params.onStart(currLeft, event, __params);
@@ -458,10 +460,10 @@
 		    }
 		    !isMove && (isLock = true);
 		    if (!isLock && isMove) {
+		        event.preventDefault();
 		        moveX = movePos(moveX, event, __params);
 		        params.onScroll(moveX);
 		        params.onMove(moveX, event, __params);
-		        event.preventDefault();
 		    }
 		});
 		// 添加滑动结束滚动执行的函数
@@ -488,7 +490,6 @@
 				updatePos();
 				setIndex(currIndex);
 				setCurrShow();// 如果不在可视窗口就让他在窗口中
-//				params.onClick(currIndex, children[currIndex], children);
 			}
 		};
 		setTimeout(function () {
