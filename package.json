@@ -1,6 +1,6 @@
 {
   "name": "cy_static",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "cy_static",
   "main": "index.js",
   "scripts": {
