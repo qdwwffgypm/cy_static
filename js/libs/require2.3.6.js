@@ -9,6 +9,7 @@ requirejs.config({
 		"load" : ___bsLibs + "/load",
 		"ajax" : ___bsLibs + "/ajax",
 		"valid" : ___bsLibs + "/valid",
+		"validate" : ___bsLibs + "/validate",
 		"cache" : ___bsLibs + "/cache",
 		"cookie" : ___bsLibs + "/cookie",
 		"dialog" : ___bsLibs + "/dialog",
